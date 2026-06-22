@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .music-page { max-width:960px; margin:24px auto; }
+  .music-hero { background:linear-gradient(135deg,#073b73,#1688d3); color:white; padding:28px; border-radius:8px; margin-bottom:18px; }
+  .music-hero h2 { margin:0 0 8px; }
+  .music-hero p { margin:0; color:#dbeafe; }
+  .music-panel { background:rgba(255,255,255,.94); border:1px solid #d7dde5; border-radius:8px; padding:22px; }
+  .music-search { display:grid; grid-template-columns:1fr 120px; gap:10px; margin-bottom:16px; }
+  .mood-bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+  .mood-bar button { width:auto; background:#edf5ff; border-color:#c7dcef; color:#0b4f91; font-weight:800; }
+  .mood-bar button.active { background:#0b4f91; color:white; }
+  .station-status { min-height:24px; color:#64748b; margin:8px 0 12px; }
+  .station-list { display:grid; gap:10px; max-height:330px; overflow:auto; padding-right:4px; }
+  .station-item { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; padding:14px; border:1px solid #d7dde5; border-radius:8px; background:#fff; }
+  .station-item strong { display:block; margin-bottom:4px; }
+  .station-meta { color:#64748b; font-size:13px; }
+  .station-item button { width:auto; min-width:86px; }
+  .radio-player { width:100%; margin-top:18px; }
+  .internet-popup { position:fixed; inset:0; display:none; place-items:center; background:rgba(15,23,42,.46); z-index:200; padding:20px; }
+  .internet-popup.show { display:grid; }
+  .internet-dialog { width:min(420px,100%); background:white; border-radius:12px; padding:24px; box-shadow:0 24px 70px rgba(15,23,42,.32); text-align:center; }
+  .internet-dialog h3 { margin:0 0 10px; color:#0b4f91; }
+  .internet-dialog p { margin:0 0 18px; color:#475569; line-height:1.5; }
+  .internet-dialog button { width:auto; min-width:130px; border-radius:999px; }
+  @media (max-width:650px) { .music-search { grid-template-columns:1fr; } .station-item { grid-template-columns:1fr; } .station-item button { width:100%; } }
+</style>
+
+<section class="music-page">
+  <div class="music-hero">
+    <h2>Store Music</h2>
+    <p>{% if current_user.role in ['owner', 'admin'] %}Search free Internet Radio stations or use the approved retail music moods.{% else %}Choose an approved professional retail music mood for the shop floor.{% endif %}</p>
+  </div>
+
+  <div class="music-panel">
+    {% if current_user.role in ['owner', 'admin'] %}
+    <div class="music-search">
+      <input id="stationSearchInput" placeholder="Search a radio station, artist style, or country">
+      <button type="button" onclick="searchStations()">Search</button>
+    </div>
+    {% endif %}
+
+    <div class="mood-bar">
+      <button class="active" type="button" data-mood="retail" onclick="loadMood('retail', this)">Retail Mix</button>
+      <button type="button" data-mood="calm" onclick="loadMood('calm', this)">Calm Ambient</button>
+      <button type="button" data-mood="jazz" onclick="loadMood('jazz', this)">Light Jazz</button>
+    </div>
+
+    <div id="stationStatus" class="station-status">Loading approved stations...</div>
+    <div id="stationList" class="station-list"></div>
+    <audio id="radioPlayer" class="radio-player" controls preload="none"></audio>
+  </div>
+</section>
+
+<div id="internetPopup" class="internet-popup"><div class="internet-dialog"><h3>Internet Required</h3><p>Internet Radio plays inside this software, but internet should be on to stream music.</p><button type="button" onclick="closeInternetPopup()">OK</button></div></div>
+<script>
+  const stationList = document.getElementById('stationList');
+  const stationStatus = document.getElementById('stationStatus');
+  const radioPlayer = document.getElementById('radioPlayer');
+
+  function showInternetPopup() { document.getElementById('internetPopup').classList.add('show'); }
+  function closeInternetPopup() { document.getElementById('internetPopup').classList.remove('show'); }
+  function requireInternet() { if (!navigator.onLine) { showInternetPopup(); return false; } return true; }
+
+  function renderStations(stations) {
+    stationList.replaceChildren();
+    if (!stations.length) {
+      stationStatus.textContent = 'No stations found. Try another approved mood or search.';
+      return;
+    }
+    stationStatus.textContent = `${stations.length} stations available`;
+    stations.forEach((station) => {
+      const row = document.createElement('div');
+      row.className = 'station-item';
+      const info = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = station.name;
+      const detail = document.createElement('div');
+      detail.className = 'station-meta';
+      detail.textContent = [station.country, station.tags].filter(Boolean).join(' | ') || 'Internet radio';
+      info.append(title, detail);
+      const play = document.createElement('button');
+      play.type = 'button';
+      play.textContent = 'Play';
+      play.onclick = () => {
+        radioPlayer.src = station.url;
+        radioPlayer.play().catch(() => {});
+        localStorage.setItem('jonamRadioUrl', station.url);
+        localStorage.setItem('jonamRadioName', station.name);
+      };
+      row.append(info, play);
+      stationList.append(row);
+    });
+  }
+
+  async function loadStations(parameters) {
+    if (!requireInternet()) return;
+    stationStatus.textContent = 'Loading stations...';
+    stationList.replaceChildren();
+    try {
+      const response = await fetch(`{{ url_for('music_stations') }}?${new URLSearchParams(parameters)}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to load stations.');
+      renderStations(data.stations || []);
+    } catch (error) {
+      stationStatus.textContent = error.message || 'Unable to load stations. Check your internet connection.';
+    }
+  }
+
+  function loadMood(mood, button) {
+    document.querySelectorAll('.mood-bar button').forEach((item) => item.classList.remove('active'));
+    button.classList.add('active');
+    loadStations({ mood });
+  }
+
+  function searchStations() {
+    const input = document.getElementById('stationSearchInput');
+    const query = input.value.trim();
+    if (!query) { input.focus(); return; }
+    loadStations({ q: query });
+  }
+
+  {% if current_user.role in ['owner', 'admin'] %}
+  document.getElementById('stationSearchInput').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); searchStations(); }
+  });
+  {% endif %}
+  window.addEventListener('load', () => {
+    if (!navigator.onLine) { showInternetPopup(); return; }
+    loadStations({ mood: 'retail' });
+  });
+  window.addEventListener('offline', showInternetPopup);
+</script>
+{% endblock %}

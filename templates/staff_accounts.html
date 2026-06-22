@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Staff Accounts</h2>
+<p class="muted">Create login IDs for new staff or reset an existing staff password.</p>
+
+<div class="grid grid-2">
+  <section class="panel">
+    <h3>Create New Staff ID</h3>
+    <form method="post" class="grid">
+      <input type="hidden" name="action" value="create">
+      <div><label>Staff Username</label><input name="username" required placeholder="e.g. cashier1"></div>
+      <div><label>Temporary Password</label><input name="password" type="password" required minlength="6" placeholder="Minimum 6 characters"></div>
+      <div><label>Access Role</label><select name="role"><option value="cashier">Cashier</option><option value="admin">Admin</option></select></div>
+      <button type="submit">Create Staff ID</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h3>Reset Staff Password</h3>
+    <form method="post" class="grid">
+      <input type="hidden" name="action" value="reset">
+      <div><label>Staff ID</label><select name="username" required>{% for member in staff %}<option value="{{ member.username }}">{{ member.username }} ({{ member.role }})</option>{% endfor %}</select></div>
+      <div><label>New Password</label><input name="password" type="password" required minlength="6" placeholder="Minimum 6 characters"></div>
+      <button type="submit">Reset Password</button>
+    </form>
+  </section>
+</div>
+
+<section class="panel">
+  <h3>Active Staff</h3>
+  <table><thead><tr><th>Staff ID</th><th>Role</th><th>Created</th></tr></thead><tbody>
+    {% for member in staff %}<tr><td>{{ member.username }}</td><td>{{ member.role|title }}</td><td>{{ member.created_at.strftime('%d %b %Y') }}</td></tr>{% else %}<tr><td colspan="3">No staff accounts created yet.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+
+<section class="panel">
+  <h3>Demo Data Reset</h3>
+  <p class="muted">Deletes all current products, customers, vendors, bills, stock history, cash entries, and store sessions. Staff login accounts remain unchanged.</p>
+  <form method="post" action="{{ url_for('reset_demo_data') }}"><button class="danger" type="submit">Reset and Create 1-Year Demo Data</button></form>
+</section>
+{% endblock %}

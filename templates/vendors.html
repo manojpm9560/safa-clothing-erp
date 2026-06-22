@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>B2B Vendor Master</h2>
+{% if current_user.role in ['owner', 'admin'] %}<section class="panel"><form method="post" action="{{ url_for('seed_demo_vendors') }}"><button class="secondary" type="submit">Add 20 Fashion Vendors</button></form></section>{% endif %}
+<div class="grid grid-2">
+<section class="panel">
+  <form method="post" class="grid">
+    <div class="row"><div><label>Vendor Name</label><input name="name" required></div><div><label>GST Number</label><input name="gst_number"></div></div>
+    <div class="row"><div><label>Phone</label><input name="phone"></div><div><label>Email</label><input name="email"></div></div>
+    <div class="row"><div><label>State</label><input name="state"></div><div><label>PAN Number</label><input name="pan_number"></div></div>
+    <div><label>Address</label><textarea name="address"></textarea></div>
+    <div><label>Bank Details</label><input name="bank_details"></div>
+    <button>Save Vendor</button>
+  </form>
+</section>
+<section class="panel">
+  <h3>B2B Vendor Bulk Upload</h3>
+  <form method="post" action="{{ url_for('import_vendors') }}" enctype="multipart/form-data" class="grid">
+    <input type="file" name="file" accept=".csv" required>
+    <button type="submit">Upload Vendor File</button>
+  </form>
+  <p><a class="button secondary" href="{{ url_for('export_data', kind='vendors') }}">Download Vendor Data</a></p>
+</section>
+</div>
+<section class="panel">
+  <table><thead><tr><th>Name</th><th>GST</th><th>Phone</th><th>State</th><th>PAN</th><th>Address</th></tr></thead><tbody>
+    {% for v in vendors %}<tr><td>{{ v.name }}</td><td>{{ v.gst_number }}</td><td>{{ v.phone }}</td><td>{{ v.state }}</td><td>{{ v.pan_number }}</td><td>{{ v.address }}</td></tr>{% else %}<tr><td colspan="6" class="muted">No vendors.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endblock %}

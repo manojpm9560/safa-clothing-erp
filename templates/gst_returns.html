@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>GST Return Workspace</h2>
+<section class="panel">
+  <form method="get" class="row" style="max-width:360px;">
+    <div><label>Return Month</label><input type="month" name="month" value="{{ selected_month }}"></div>
+    <button type="submit">Prepare Return</button>
+  </form>
+  <div class="row" style="max-width:520px;margin-top:12px;"><button type="button" class="secondary" onclick="window.print()">Print GST Report</button><a class="button" href="{{ url_for('export_gst_return', month=selected_month) }}">Download GST Filing Sheet</a></div>
+  <p class="muted" style="margin:12px 0 0;">The downloaded spreadsheet opens in Excel and contains the invoice register for the selected return month.</p>
+</section>
+
+{% if not sales and not adjustments %}
+<section class="panel"><strong>No completed sales, returns, or credit notes were found for {{ period_start.strftime('%B %Y') }}.</strong><br><span class="muted">Select the month containing your completed bills, then click Prepare Return again.</span></section>
+{% endif %}
+
+<div class="grid grid-4">
+  <section class="panel"><div class="muted">Taxable Sales</div><div class="metric">{{ taxable_sales|inr }}</div></section>
+  <section class="panel"><div class="muted">Output GST</div><div class="metric">{{ output_tax|inr }}</div></section>
+  <section class="panel"><div class="muted">Return / Credit GST</div><div class="metric">{{ adjustment_tax|inr }}</div></section>
+  <section class="panel"><div class="muted">Net GST Payable</div><div class="metric">{{ net_tax|inr }}</div></section>
+</div>
+
+<div class="grid grid-2">
+  <section class="panel">
+    <h3>GSTR-1 Sales Split</h3>
+    <p>B2B invoices with customer GST: <strong>{{ b2b_sales|length }}</strong></p>
+    <p>B2C invoices: <strong>{{ b2c_sales|length }}</strong></p>
+    <p>Total completed sales: <strong>{{ sales|length }}</strong></p>
+  </section>
+  <section class="panel">
+    <h3>Credit / Return Adjustments</h3>
+    <p>Adjustment documents: <strong>{{ adjustments|length }}</strong></p>
+    <p>Adjustment value: <strong>{{ adjustment_total|inr }}</strong></p>
+    <p class="muted">Review these before filing your GST return.</p>
+  </section>
+</div>
+
+<section class="panel">
+  <h3>Invoice Register: {{ period_start.strftime('%B %Y') }}</h3>
+  <table><thead><tr><th>Date</th><th>Bill No.</th><th>Type</th><th>Customer GST</th><th>Taxable Value</th><th>GST</th><th>Total</th></tr></thead><tbody>
+    {% for tx in sales + adjustments %}<tr>
+      <td>{{ tx.created_at.strftime('%d-%m-%Y') }}</td><td>{{ tx.bill_number }}</td><td>{{ tx.transaction_type.replace('_', ' ').title() }}</td><td>{{ tx.customer_gst_number or '-' }}</td>
+      <td>{{ (tx.subtotal - tx.discount_amount)|inr }}</td><td>{{ tx.tax_amount|inr }}</td><td>{{ tx.total|inr }}</td>
+    </tr>{% else %}<tr><td colspan="7" class="muted">No completed GST documents for this month.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+
+<section class="panel">
+  <strong>Important:</strong> This workspace prepares figures from bills stored in this software. Check GSTINs, tax rates, credit notes, and filing period with your accountant before submitting GSTR-1 or GSTR-3B on the GST portal.
+</section>
+{% endblock %}

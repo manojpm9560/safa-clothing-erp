@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .label-tools { max-width:900px; margin:0 auto 16px; }
+  .labels-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:14px; max-width:900px; margin:0 auto; }
+  .barcode-label { width:100%; min-height:170px; background:white; border:1px dashed #94a3b8; border-radius:4px; padding:12px; display:flex; flex-direction:column; justify-content:space-between; }
+  .label-store { font-size:11px; font-weight:900; color:#0b4f91; text-transform:uppercase; }
+  .label-name { font-weight:900; font-size:15px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .label-meta { font-size:12px; color:#475569; display:flex; justify-content:space-between; gap:8px; }
+  .barcode-svg { width:100%; height:54px; display:block; }
+  .barcode-text { text-align:center; letter-spacing:2px; font-family:monospace; font-size:12px; }
+  .label-price { font-size:17px; font-weight:900; text-align:right; }
+  @media print {
+    @page { size: 75mm 40mm; margin: 2mm; }
+    header, .no-print, .drawer-toggle, .slide-nav { display:none !important; }
+    main { padding:0 !important; max-width:none !important; }
+    body { background:white !important; }
+    .labels-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:2mm; max-width:none; }
+    .barcode-label { width:75mm; min-height:36mm; border:0; break-inside:avoid; page-break-inside:avoid; padding:2mm; }
+  }
+</style>
+
+<section class="panel label-tools no-print">
+  <h2>Barcode Label Printer</h2>
+  <form method="get" class="row">
+    <input type="hidden" name="product_id" value="{{ product.id if product else '' }}">
+    <div><label>Number of Labels</label><input name="quantity" type="number" min="1" max="100" value="{{ quantity }}"></div>
+    <button type="submit">Update Labels</button>
+    <button type="button" class="secondary" onclick="window.print()">Print Labels</button>
+  </form>
+</section>
+
+{% if product %}
+<div class="labels-grid">
+  {% for _ in range(quantity) %}
+  <article class="barcode-label">
+    <div class="label-store">{{ store.name }}</div>
+    <div class="label-name">{{ product.name }}</div>
+    <div class="label-meta"><span>{{ product.article_code }}</span><span>{{ product.size }} / {{ product.color }}</span></div>
+    <svg class="barcode-svg" data-barcode="{{ product.barcode or product.id }}" aria-label="Barcode {{ product.barcode }}"></svg>
+    <div class="barcode-text">{{ product.barcode or product.id }}</div>
+    <div class="label-price">MRP {{ product.selling_price|inr }}</div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<section class="panel"><p class="muted">Open this page from a product row in Inventory to print its barcode labels.</p></section>
+{% endif %}
+
+<script>
+  const code39Digits = {
+    '0':'nnnwwnwnn','1':'wnnwnnnnw','2':'nnwwnnnnw','3':'wnwwnnnnn','4':'nnnwwnnnw',
+    '5':'wnnwwnnnn','6':'nnwwwnnnn','7':'nnnwnnwnw','8':'wnnwnnwnn','9':'nnwwnnwnn','*':'nwnnwnwnn'
+  };
+  function drawBarcode(svg, rawValue) {
+    const value = String(rawValue).replace(/[^0-9]/g, '') || '0';
+    const encoded = `*${value}*`;
+    const units = [];
+    encoded.split('').forEach((character) => {
+      const pattern = code39Digits[character] || code39Digits['0'];
+      [...pattern].forEach((width, index) => units.push({ bar:index % 2 === 0, width:width === 'w' ? 3 : 1 }));
+      units.push({ bar:false, width:1 });
+    });
+    const total = units.reduce((sum, unit) => sum + unit.width, 0);
+    let x = 0;
+    const rects = units.filter((unit) => {
+      const current = { x, width:unit.width, bar:unit.bar };
+      x += unit.width;
+      unit.x = current.x;
+      return unit.bar;
+    }).map((unit) => `<rect x="${unit.x}" y="0" width="${unit.width}" height="52" fill="#000"/>`).join('');
+    svg.setAttribute('viewBox', `0 0 ${total} 52`);
+    svg.innerHTML = rects;
+  }
+  document.querySelectorAll('.barcode-svg').forEach((svg) => drawBarcode(svg, svg.dataset.barcode));
+</script>
+{% endblock %}

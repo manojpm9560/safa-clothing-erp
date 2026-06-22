@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  main { max-width:none; padding:0; }
+  .pos-shell { display:grid; grid-template-columns:minmax(0,1fr) 420px; align-items:start; min-height:calc(100vh - 74px); background:#f1f5f9; }
+  .catalog { grid-column:2; padding:26px; min-width:0; }
+  .pos-titlebar { position:sticky; top:74px; z-index:10; display:flex; justify-content:space-between; gap:18px; align-items:center; margin:-26px -26px 20px; padding:20px 26px; background:rgba(241,245,249,.96); border-bottom:1px solid #d5dee9; backdrop-filter:blur(8px); }
+  .pos-titlebar h2 { margin:0; font-size:26px; }
+  .scan-input { width:min(460px,100%); height:46px; border-radius:8px; border:1px solid #cbd5e1; padding:0 14px; font-size:15px; background:white; }
+  .catalog-note { color:#64748b; font-size:13px; margin-bottom:15px; }
+  .product-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:14px; }
+  .product-card { min-height:154px; border:1px solid #d5dee9; border-radius:8px; background:white; padding:14px; text-align:left; cursor:pointer; box-shadow:0 2px 5px rgba(15,23,42,.04); }
+  .product-card:hover { border-color:#1688d3; box-shadow:0 9px 20px rgba(14,116,203,.13); transform:translateY(-1px); }
+  .product-name { font-weight:900; color:#1e293b; line-height:1.35; }
+  .product-meta { color:#64748b; font-size:12px; margin:8px 0; line-height:1.45; }
+  .product-price { color:#0b4f91; font-size:17px; font-weight:900; }
+  .order-panel { grid-column:1; grid-row:1; background:white; border:1px solid #d5dee9; border-radius:8px; display:flex; flex-direction:column; position:sticky; top:88px; margin:18px 0 18px 18px; max-height:calc(100vh - 108px); box-shadow:0 8px 20px rgba(15,23,42,.06); }
+  .order-head { padding:15px 16px; border-bottom:1px solid #0b4f91; display:flex; align-items:center; justify-content:space-between; background:#123b70; color:white; border-radius:7px 7px 0 0; }
+  .order-head h3 { margin:0; font-size:21px; }
+  .order-head .muted { color:#dbeafe; }
+  .order-body { padding:12px 16px; overflow:auto; min-height:280px; max-height:430px; }
+  .cart-list { display:grid; gap:10px; }
+  .cart-empty { color:#64748b; padding:28px 0; text-align:center; }
+  .cart-line { display:grid; grid-template-columns:1fr auto; gap:10px; padding-bottom:10px; border-bottom:1px solid #e5e7eb; }
+  .cart-line strong { display:block; font-size:14px; line-height:1.35; }
+  .cart-line small { color:#64748b; }
+  .qty-control { display:flex; align-items:center; gap:6px; margin-top:8px; }
+  .qty-control button { width:27px; height:27px; padding:0; border-radius:5px; background:#eaf3ff; color:#0b4f91; border:1px solid #c8def7; font-weight:900; }
+  .qty-control input { width:42px; height:27px; padding:0; text-align:center; }
+  .remove-line { width:auto; height:28px; padding:0 8px; background:transparent; color:#b42318; border:1px solid #fecaca; font-size:12px; }
+  .customer-box { border-top:1px solid #e2e8f0; padding:10px 16px; }
+  .customer-box details summary { color:#0b4f91; font-weight:900; cursor:pointer; }
+  .customer-box input, .customer-box select { margin-top:8px; }
+  .customer-choice { display:block; padding:7px 0; font-size:13px; }
+  .totals { padding:10px 16px; border-top:1px solid #e2e8f0; background:#f8fafc; }
+  .total-row { display:flex; justify-content:space-between; margin:7px 0; color:#475569; }
+  .grand-total { font-size:22px; font-weight:900; color:#0f172a; padding-top:8px; border-top:1px solid #dbe3ec; }
+  .checkout-tools { padding:10px 16px 14px; display:grid; gap:8px; border-top:1px solid #e2e8f0; }
+  .checkout-tools select, .checkout-tools input { height:40px; }
+  .pay-button { height:52px; background:#0b4f91; border-color:#0b4f91; font-size:16px; font-weight:900; }
+  .hold-button { background:#475569; border-color:#475569; }
+  .held-bills { padding:10px 16px; border-top:1px solid #e2e8f0; max-height:110px; overflow:auto; }
+  .held-bills summary { font-weight:800; cursor:pointer; }
+  .held-bills a { display:block; padding:7px 0; color:#0b4f91; text-decoration:none; font-size:13px; }
+  @media (max-width:900px) { .pos-shell { grid-template-columns:1fr; } .catalog,.order-panel { grid-column:auto; grid-row:auto; } .order-panel { position:static; margin:0 20px 20px; max-height:none; } .order-body { min-height:220px; max-height:400px; } .pos-titlebar { position:static; margin:-26px -26px 20px; align-items:stretch; flex-direction:column; } .scan-input { width:100%; } }
+</style>
+
+<div class="pos-shell">
+  <section class="catalog">
+    <div class="pos-titlebar">
+      <div><h2>POS Billing Desk</h2><div class="catalog-note">Tap a product to add it to the current order.</div></div>
+      <input id="productSearch" class="scan-input" value="{{ query }}" autofocus placeholder="Search or scan barcode, article code, item name" oninput="filterProducts()">
+    </div>
+    <div id="productGrid" class="product-grid">
+      {% for p in products_found %}
+      <button type="button" class="product-card" data-search="{{ p.id }} {{ p.barcode }} {{ p.name }} {{ p.article_code }} {{ p.size }} {{ p.color }} {{ p.hsn_code or '' }}" onclick='addItem({{ p.id }}, {{ p.display_name|tojson }}, {{ p.selling_price|float }}, {{ p.stock_level }}, {{ (p.hsn_code or '')|tojson }})'>
+        <div class="product-name">{{ p.name }}</div>
+        <div class="product-meta">{{ p.article_code }} | {{ p.size }} | {{ p.color }}<br>HSN: {{ p.hsn_code or '-' }} | Stock: {{ p.stock_level }}</div>
+        <div class="product-price">{{ p.selling_price|inr }}</div>
+      </button>
+      {% else %}<p class="muted">No products available. Add inventory first.</p>{% endfor %}
+    </div>
+  </section>
+
+  <form method="post" action="{{ url_for('checkout') }}" class="order-panel" onsubmit="return prepareCheckout()">
+    <div class="order-head"><h3>Current Order</h3><span id="cartCount" class="muted">0 items</span></div>
+    <input type="hidden" name="cart_json" id="cart_json">
+    <input type="hidden" name="customer_id" id="customer_id">
+    <input type="hidden" name="action" id="checkout_action" value="complete">
+    <div class="order-body"><div id="cartRows" class="cart-list"><div class="cart-empty">Your cart is empty.</div></div></div>
+
+    <div class="customer-box">
+      <details>
+        <summary>Customer and GST</summary>
+        <input id="customerLookup" style="margin-top:10px;" placeholder="Find by customer name, phone or GST" oninput="filterCustomers()">
+        <div id="customerChoices">{% for c in customers_found %}<label class="customer-choice" data-search="{{ c.name }} {{ c.phone }} {{ c.gst_number or '' }}"><input type="radio" name="picked_customer" value="{{ c.id }}" data-gst="{{ c.gst_number or '' }}"> {{ c.name }} | {{ c.phone }}</label>{% endfor %}</div>
+        <input name="new_customer_name" placeholder="New customer name">
+        <input name="new_customer_phone" placeholder="New customer phone">
+        <input name="customer_gst_number" id="customer_gst_number" placeholder="Customer GST number">
+      </details>
+    </div>
+
+    <div class="totals">
+      <input type="hidden" name="tax_rate" id="tax_rate" value="{{ tax_rate }}">
+      <div class="total-row"><span>Subtotal</span><strong id="subtotal">Rs. 0.00</strong></div>
+      <div class="total-row"><span>Discount</span><input name="discount_amount" id="discount_amount" type="number" step="0.01" value="0" oninput="renderCart()" style="width:100px;height:28px;text-align:right;"></div>
+      <div class="total-row"><span>GST ({{ tax_rate }}%)</span><strong id="tax">Rs. 0.00</strong></div>
+      <div class="total-row grand-total"><span>Total</span><span id="total">Rs. 0.00</span></div>
+    </div>
+
+    <div class="checkout-tools">
+      <select name="transaction_type"><option value="sale">Sale Bill</option><option value="return">Return</option><option value="quotation">Quotation</option><option value="credit_note">Credit Note</option><option value="debit_note">Debit Note</option></select>
+      <select name="payment_method"><option value="cash_upi">Cash / UPI Paid</option><option value="credit">Customer Credit Khata</option><option value="card">Card</option></select>
+      <input name="payment_tender" placeholder="Tender: cash amount, UPI ref, card approval">
+      <button class="pay-button" type="submit">Pay and Print</button>
+      <button class="hold-button" type="submit" onclick="document.getElementById('checkout_action').value='hold'">Hold Order</button>
+    </div>
+    <details class="held-bills"><summary>Held Orders ({{ held_bills|length }})</summary>{% for bill in held_bills %}<a href="{{ url_for('recall', transaction_id=bill.id) }}">Recall #{{ bill.id }} - {{ bill.customer.name if bill.customer else 'Walk-in' }}</a>{% else %}<div class="muted" style="padding-top:8px;">No held orders.</div>{% endfor %}</details>
+  </form>
+</div>
+
+<script>
+let cart = [];
+function rupees(v){ return 'Rs. ' + Number(v || 0).toFixed(2); }
+function filterProducts(){ const term=document.getElementById('productSearch').value.toLowerCase().trim(); document.querySelectorAll('.product-card').forEach(card=>card.hidden=!card.dataset.search.toLowerCase().includes(term)); }
+function filterCustomers(){ const term=document.getElementById('customerLookup').value.toLowerCase().trim(); document.querySelectorAll('.customer-choice').forEach(choice=>choice.hidden=!choice.dataset.search.toLowerCase().includes(term)); }
+function addItem(id,label,price,stock,hsn){ const line=cart.find(row=>row.product_id===id); if(line){ if(line.quantity<stock) line.quantity+=1; } else if(stock>0){ cart.push({product_id:id,label,quantity:1,price:Number(price),stock:Number(stock),hsn:hsn || ''}); } renderCart(); }
+function removeItem(id){ cart=cart.filter(row=>row.product_id!==id); renderCart(); }
+function changeQty(id,change){ const line=cart.find(row=>row.product_id===id); if(!line) return; line.quantity=Math.max(1,Math.min(line.stock,line.quantity+change)); renderCart(); }
+function renderCart(){
+  const target=document.getElementById('cartRows');
+  document.getElementById('cartCount').textContent=`${cart.reduce((sum,row)=>sum+row.quantity,0)} items`;
+  target.innerHTML=cart.length ? cart.map(row=>`<div class="cart-line"><div><strong>${row.label}</strong><small>HSN: ${row.hsn || '-'} | ${rupees(row.price)} each</small><div class="qty-control"><button type="button" onclick="changeQty(${row.product_id},-1)">-</button><input value="${row.quantity}" readonly><button type="button" onclick="changeQty(${row.product_id},1)">+</button></div></div><div><strong>${rupees(row.price*row.quantity)}</strong><button class="remove-line" type="button" onclick="removeItem(${row.product_id})">Remove</button></div></div>`).join('') : '<div class="cart-empty">Your cart is empty.</div>';
+  const subtotal=cart.reduce((sum,row)=>sum+row.price*row.quantity,0); const discount=Number(document.getElementById('discount_amount').value||0); const rate=Number(document.getElementById('tax_rate').value||0); const taxable=Math.max(0,subtotal-discount); const tax=taxable*rate/100;
+  document.getElementById('subtotal').textContent=rupees(subtotal); document.getElementById('tax').textContent=rupees(tax); document.getElementById('total').textContent=rupees(taxable+tax);
+}
+function prepareCheckout(){ const picked=document.querySelector('input[name="picked_customer"]:checked'); if(picked){ document.getElementById('customer_id').value=picked.value; document.getElementById('customer_gst_number').value=picked.dataset.gst||document.getElementById('customer_gst_number').value; } document.getElementById('cart_json').value=JSON.stringify(cart.map(row=>({product_id:row.product_id,quantity:row.quantity}))); if(!cart.length){ alert('Add an item before payment.'); return false; } return true; }
+{% if recalled_cart is defined %}document.addEventListener('DOMContentLoaded',()=>{cart={{ recalled_cart|tojson }};renderCart();document.getElementById('customer_id').value='{{ recalled_customer_id }}';});{% endif %}
+</script>
+{% endblock %}

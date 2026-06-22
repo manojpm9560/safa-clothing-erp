@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  header { display:none; }
+  main { max-width:none; padding:0; }
+  body { margin:0; min-height:100vh; background:#f6fbff; font-family:Arial,sans-serif; color:#14233a; position:relative; overflow-x:hidden; }
+  body::before { content:""; position:fixed; inset:0; background:url("{{ url_for('static', filename='images/jonam-background-logo.png') }}") right 4vw bottom 4vh / min(38vw, 520px) no-repeat; opacity:.12; pointer-events:none; z-index:0; }
+  .login-page { min-height:100vh; display:grid; place-items:center; padding:28px; position:relative; z-index:1; }
+  .auth-board {
+    width:min(1015px,100%);
+    min-height:640px;
+    display:grid;
+    grid-template-columns: .95fr 1.05fr;
+    background:#f9fcff;
+    border:1px solid #d8e5f3;
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 28px 80px rgba(15,23,42,.12);
+  }
+  .brand-pane {
+    background:#e8f4ff;
+    border-right:1px solid #cbdced;
+    padding:54px 58px 38px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+  }
+  .jonam-logo { width:390px; height:190px; object-fit:contain; display:block; margin:-22px auto 6px; background:transparent; transform:translateX(-14px); }
+  .brand-pane h2 { margin:0 0 20px; font-size:44px; line-height:1.06; color:#102744; letter-spacing:0; }
+  .brand-line { margin:0; max-width:360px; color:#52667d; font-size:21px; line-height:1.65; }
+  .trust-list { display:grid; gap:13px; margin-top:36px; }
+  .trust-item { display:flex; align-items:center; gap:12px; color:#1e2d42; font-size:20px; font-weight:800; }
+  .trust-dot { width:13px; height:13px; border-radius:50%; background:#1688d3; box-shadow:0 0 0 7px rgba(22,136,211,.16); }
+  .system-note { color:#64748b; font-size:16px; }
+  .form-pane { padding:0 72px; display:flex; flex-direction:column; justify-content:center; }
+  .form-pane h3 { margin:0 0 26px; font-size:40px; color:#111827; }
+  .form-pane .muted { margin:0 0 38px; color:#64748b; font-size:21px; }
+  .login-form { display:grid; gap:20px; }
+  .field { position:relative; }
+  .field input {
+    width:100%;
+    height:70px;
+    border:1px solid #c4d3e3;
+    border-radius:14px;
+    background:white;
+    padding:28px 16px 10px;
+    color:#111827;
+    font-size:19px;
+  }
+  .field label { position:absolute; top:10px; left:16px; color:#5b6c84; font-size:15px; font-weight:800; margin:0; }
+  .form-actions { display:grid; grid-template-columns:1fr auto; gap:28px; align-items:center; margin-top:30px; }
+  .login-links { display:grid; gap:22px; }
+  .login-links a { color:#064b8f; text-decoration:none; font-size:19px; font-weight:900; }
+  .continue-btn {
+    width:158px;
+    height:58px;
+    border:0;
+    border-radius:999px;
+    background:linear-gradient(135deg,#0b5598,#1688d3);
+    color:white;
+    font-size:18px;
+    font-weight:900;
+    box-shadow:0 18px 36px rgba(22,136,211,.26);
+  }
+  @media (max-width:900px) {
+    .auth-board { grid-template-columns:1fr; }
+    .brand-pane { border-right:0; border-bottom:1px solid #cbdced; padding:34px; }
+    .form-pane { padding:38px 34px; }
+    .brand-pane h2 { font-size:34px; }
+    .jonam-logo { width:290px; height:150px; margin:-18px auto 4px; transform:translateX(-8px); }
+    .brand-line { font-size:18px; }
+    .trust-item { font-size:17px; }
+    .form-actions { grid-template-columns:1fr; }
+    .continue-btn { width:100%; }
+  }
+</style>
+
+<div class="login-page">
+  <section class="auth-board">
+    <div class="brand-pane">
+      <div>
+        <img class="jonam-logo" src="{{ url_for('static', filename='images/jonam-background-logo.png') }}" alt="Jonam Software logo">
+        <h2>Jonam Software</h2>
+        <p class="brand-line">Smart retail software for faster billing, clearer stock control, and confident business decisions.</p>
+        <div class="trust-list">
+          <div class="trust-item"><span class="trust-dot"></span>Offline retail billing</div>
+          <div class="trust-item"><span class="trust-dot"></span>Inventory and GST ready</div>
+          <div class="trust-item"><span class="trust-dot"></span>Built for growing stores</div>
+        </div>
+      </div>
+      <div class="system-note">Professional retail ERP by Jonam Software.</div>
+    </div>
+
+    <div class="form-pane">
+      <h3>Sign in</h3>
+      <p class="muted">Use your staff ID to continue.</p>
+      <form method="post" class="login-form">
+        <div class="field">
+          <label>Staff ID</label>
+          <input name="username" type="text" placeholder="admin or cashier ID" required autofocus>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input name="password" type="password" placeholder="Enter your password" required>
+        </div>
+        <div class="form-actions">
+          <div class="login-links">
+            <a href="{{ url_for('forgot_password') }}">Forgot password?</a>
+            <a href="{{ url_for('staff_accounts') }}">Create staff ID</a>
+          </div>
+          <button class="continue-btn" type="submit">Continue</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+{% endblock %}

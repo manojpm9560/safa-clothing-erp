@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>My Profile</h2>
+<div class="grid grid-2">
+  <section class="panel">
+    <h3>Staff Details</h3>
+    <form method="post" class="grid">
+      <div><label>Full Name</label><input name="full_name" value="{{ current_user.full_name or '' }}" placeholder="Enter full name"></div>
+      <div><label>Employee ID</label><input name="employee_id" value="{{ current_user.employee_id or '' }}" placeholder="Enter employee ID"></div>
+      <div><label>Phone Number</label><input name="phone" value="{{ current_user.phone or '' }}" placeholder="Enter phone number"></div>
+      <div><label>Email Address</label><input name="email" type="email" value="{{ current_user.email or '' }}" placeholder="Enter email address"></div>
+      <button type="submit">Update Profile</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h3>Account Details</h3>
+    <table><tbody>
+      <tr><th>Staff ID</th><td>{{ current_user.username }}</td></tr>
+      <tr><th>Access Role</th><td>{{ current_user.role|title }}</td></tr>
+      <tr><th>Login Time</th><td>{{ login_time or 'Current session' }}</td></tr>
+      <tr><th>Account Created</th><td>{{ current_user.created_at.strftime('%d-%m-%Y %I:%M %p') }}</td></tr>
+      <tr><th>Store</th><td>{{ store.name }}</td></tr>
+      <tr><th>Store Location</th><td>{{ store.location }}</td></tr>
+      <tr><th>Store GSTIN</th><td>{{ store.gstin }}</td></tr>
+    </tbody></table>
+    <p style="margin-top:18px;"><a class="button secondary" href="{{ url_for('change_password') }}">Change Password</a></p>
+  </section>
+</div>
+{% endblock %}

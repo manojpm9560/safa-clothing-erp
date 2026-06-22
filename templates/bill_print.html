@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;">
+    <div>
+      {% if store.logo %}<img src="{{ url_for('static', filename=store.logo) }}" alt="{{ store.name }} logo" style="width:220px;height:110px;object-fit:contain;display:block;margin-bottom:8px;">{% endif %}
+      <div style="font-size:24px;font-weight:800;letter-spacing:1px;">{{ store.name }}</div>
+      <div>{{ store.address }}</div><div>Phone: {{ store.phone }}</div><div>Store GSTIN: <strong>{{ store.gstin }}</strong></div>
+    </div>
+    <div style="text-align:right;">
+      <h2>{{ tx.transaction_type.replace('_',' ').title() }}</h2>
+      <div>Bill No: <strong>{{ tx.bill_number }}</strong></div>
+      <div>Date: {{ tx.created_at.strftime('%d-%m-%Y %H:%M') }}</div>
+      <div>Status: {{ tx.status }}</div>
+    </div>
+  </div>
+  <hr>
+  <div class="grid grid-2">
+    <div>Customer: <strong>{{ tx.customer.name if tx.customer else 'Walk-in' }}</strong><br>Phone: {{ tx.customer.phone if tx.customer else '-' }}<br>Customer GST: <strong>{{ tx.customer_gst_number or '-' }}</strong></div>
+    <div>Cashier: {{ tx.cashier.username if tx.cashier else '-' }}<br>Payment: {{ tx.payment_method }}<br>Tender: {{ tx.payment_tender }}</div>
+  </div>
+  <table style="margin-top:16px;"><thead><tr><th>Item</th><th>Qty</th><th>MRP</th><th>Line Total</th></tr></thead><tbody>
+    {% for item in tx.items %}<tr><td>{{ item.product.display_name }}<br><span class="muted">Barcode {{ item.product.barcode }} / GST {{ item.product.gst_rate }}% / HSN {{ item.product.hsn_code or '-' }}</span></td><td>{{ item.quantity }}</td><td>{{ item.unit_price|inr }}</td><td>{{ item.line_total|inr }}</td></tr>{% endfor %}
+  </tbody></table>
+  <div style="max-width:360px;margin-left:auto;margin-top:16px;">
+    <p>Subtotal: <strong>{{ tx.subtotal|inr }}</strong></p>
+    <p>Discount: <strong>{{ tx.discount_amount|inr }}</strong></p>
+    <p>GST: <strong>{{ tx.tax_amount|inr }}</strong></p>
+    <p class="metric">Total: {{ tx.total|inr }}</p>
+  </div>
+  <div class="no-print row">
+    <button onclick="window.print()">Print Bill</button>
+    <a class="button secondary" href="{{ url_for('pos') }}">Back to POS</a>
+  </div>
+  {% if current_user.role == 'owner' and tx.status != 'void' %}
+  <form class="no-print" method="post" action="{{ url_for('void_bill', transaction_id=tx.id) }}" style="margin-top:16px;">
+    <label>Owner Void Reason</label><input name="void_reason" required><button class="danger">Void Bill</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

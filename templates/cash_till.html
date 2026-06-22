@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Cash Till / Sessions</h2>
+<div class="grid grid-3">
+  <section class="panel"><h3>Cash Balance</h3><div class="metric">{{ balance|inr }}</div><p class="muted">Includes opening cash, cash sales, returns, and petty cash.</p></section>
+  <section class="panel">
+    <h3>Opening Session</h3>
+    <form method="post" action="{{ url_for('open_store_session') }}" class="grid">
+      <div><label>Opening Cash</label><input name="opening_cash" type="number" step="0.01" required></div>
+      <div><label>Note</label><input name="note"></div><button>Open Session</button>
+    </form>
+  </section>
+  <section class="panel">
+    <h3>Closing Session</h3>
+    <form method="post" action="{{ url_for('close_store_session') }}" class="grid">
+      <div><label>Closing Cash Counted</label><input name="closing_cash" type="number" step="0.01" required></div>
+      <button class="secondary">Close Session</button>
+    </form>
+  </section>
+</div>
+<section class="panel">
+  <h3>Cash In / Cash Out</h3>
+  <form method="post" class="row">
+    <div><label>Type</label><select name="entry_type"><option value="cash_in">Cash In</option><option value="cash_out">Cash Out / Expense</option></select></div>
+    <div><label>Amount</label><input name="amount" type="number" step="0.01" required></div>
+    <div><label>Note</label><input name="note" required></div>
+    <button>Save</button>
+  </form>
+</section>
+<section class="panel">
+  <h3>Cash Log</h3>
+  <table><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Note</th><th>User</th></tr></thead><tbody>
+    {% for e in entries %}<tr><td>{{ e.created_at.strftime('%d-%m-%Y %H:%M') }}</td><td>{{ e.entry_type }}</td><td>{{ e.amount|inr }}</td><td>{{ e.note }}</td><td>{{ e.user.username if e.user else '-' }}</td></tr>{% else %}<tr><td colspan="5" class="muted">No entries.</td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endblock %}

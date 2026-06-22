@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  main { max-width:none; padding:0; }
+  .dash-shell { min-height:calc(100vh - 74px); background:#f4f6f9; }
+  .dash-main { padding:34px; }
+  .dash-top { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; margin-bottom:34px; }
+  .dash-top h2 { font-size:34px; margin:0 0 8px; font-weight:500; }
+  .date-filter { position:relative; }
+  .date-filter summary { list-style:none; cursor:pointer; border:1px solid #ccd3dd; background:white; padding:14px 18px; border-radius:8px; color:#374151; min-width:230px; text-align:center; font-weight:800; }
+  .date-filter summary::-webkit-details-marker { display:none; }
+  .date-filter summary::after { content:" v"; font-size:12px; }
+  .date-filter-menu { position:absolute; right:0; top:52px; z-index:30; width:250px; padding:8px; background:white; border:1px solid #ccd3dd; border-radius:8px; box-shadow:0 16px 34px rgba(15,23,42,.18); }
+  .date-filter-menu a { display:block; padding:11px 12px; color:#334155; text-decoration:none; border-radius:6px; font-weight:700; }
+  .date-filter-menu a:hover { color:#0b4f91; background:#eef5ff; }
+  .date-range-form { display:grid; gap:8px; padding:10px 4px 4px; border-top:1px solid #e2e8f0; margin-top:6px; }
+  .date-range-form input { height:38px; }
+  .date-range-form button { height:38px; }
+  .metric-row { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:26px; }
+  .stat-card { background:white; border:1px solid #d8dee8; border-radius:8px; padding:18px; min-height:112px; }
+  .stat-card .muted { font-size:16px; margin-bottom:22px; }
+  .stat-card .metric { font-size:23px; color:#1f2937; }
+  .report-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  .report-card { background:white; border:1px solid #d8dee8; border-radius:8px; min-height:360px; display:flex; flex-direction:column; }
+  .report-head { display:flex; justify-content:space-between; gap:12px; padding:20px 26px; border-bottom:1px solid #d8dee8; }
+  .report-head h3 { margin:0; font-size:21px; }
+  .report-body { padding:18px 26px; flex:1; }
+  .report-chart { display:flex; gap:22px; align-items:center; padding-bottom:20px; border-bottom:1px solid #e2e8f0; margin-bottom:18px; }
+  .donut-chart { width:138px; height:138px; flex:0 0 138px; border-radius:50%; background:conic-gradient(#0b4f91 0 calc(var(--sales) * 1%), #ef8f3a calc(var(--sales) * 1%) calc((var(--sales) + var(--returns)) * 1%), #a855f7 calc((var(--sales) + var(--returns)) * 1%) 100%); position:relative; }
+  .donut-chart::after { content:"Report"; position:absolute; inset:25px; display:grid; place-items:center; border-radius:50%; background:white; color:#475569; font-size:13px; font-weight:900; }
+  .chart-legend { display:grid; gap:9px; font-size:13px; }
+  .legend-item { display:flex; align-items:center; gap:8px; color:#475569; }
+  .legend-dot { width:10px; height:10px; border-radius:50%; }
+  .legend-sales { background:#0b4f91; } .legend-returns { background:#ef8f3a; } .legend-discount { background:#a855f7; }
+  .empty-state { min-height:210px; display:grid; place-items:center; color:#6b7280; font-weight:700; }
+  .report-foot { border-top:1px solid #d8dee8; padding:14px 26px; text-align:right; }
+  .report-foot a { color:#2563eb; text-decoration:none; font-weight:700; }
+  @media (max-width:1000px) { .metric-row,.report-grid{grid-template-columns:1fr;} .dash-top{flex-direction:column;} }
+</style>
+
+<div class="dash-shell">
+  <section class="dash-main">
+    <div class="dash-top">
+      <div>
+        <h2>Welcome to {{ store.name }}</h2>
+        <p class="muted">{{ store.location }} | Business statistics for {{ period_label|lower }}</p>
+      </div>
+      <details class="date-filter">
+        <summary>{{ period_label }} Report</summary>
+        <div class="date-filter-menu">
+          <a href="{{ url_for('dashboard', period='today') }}">Today</a>
+          <a href="{{ url_for('dashboard', period='week') }}">This Week</a>
+          <a href="{{ url_for('dashboard', period='month') }}">This Month</a>
+          <a href="{{ url_for('dashboard', period='year') }}">This Year</a>
+          <a href="{{ url_for('dashboard', period='last_year') }}">Last 12 Months</a>
+          <form method="get" class="date-range-form">
+            <input type="hidden" name="period" value="range">
+            <input type="date" name="start_date" value="{{ start_date }}">
+            <input type="date" name="end_date" value="{{ end_date }}">
+            <button type="submit">Date Range</button>
+          </form>
+        </div>
+      </details>
+    </div>
+
+    <div class="metric-row">
+      <section class="stat-card"><div class="muted">Total Collection</div><div class="metric">{{ total_sales|inr }}</div></section>
+      <section class="stat-card"><div class="muted">GST Collected</div><div class="metric">{{ tax_collected|inr }}</div></section>
+      <section class="stat-card"><div class="muted">Orders</div><div class="metric">{{ order_count }}</div></section>
+      <section class="stat-card"><div class="muted">Discount</div><div class="metric">{{ discount_total|inr }}</div></section>
+    </div>
+
+    <div class="report-grid">
+      <section class="report-card">
+        <div class="report-head"><h3>Store Sales</h3><span class="muted">Profit {{ total_profit|inr }}</span></div>
+        <div class="report-body">
+          <table><thead><tr><th>Item</th><th>Qty</th><th>Revenue</th></tr></thead><tbody>
+            {% for item in top_items %}<tr><td>{{ item.name }} / {{ item.article_code }}</td><td>{{ item.qty }}</td><td>{{ item.revenue|inr }}</td></tr>{% else %}<tr><td colspan="3"><div class="empty-state">No sales records today</div></td></tr>{% endfor %}
+          </tbody></table>
+        </div>
+        <div class="report-foot"><a href="{{ url_for('closing_report') }}">View Report</a></div>
+      </section>
+
+      <section class="report-card">
+        <div class="report-head"><h3>Business Summary</h3><span class="muted">Cash {{ cash_balance|inr }}</span></div>
+        <div class="report-body">
+          <table><tbody>
+            <tr><td>Profit Margin</td><td><strong>{{ margin }}%</strong></td></tr>
+            <tr><td>Returns</td><td><strong>{{ total_returns|inr }}</strong></td></tr>
+            <tr><td>Net Position</td><td><strong>{{ (total_profit - total_returns)|inr }}</strong></td></tr>
+          </tbody></table>
+          <h3 style="margin-top:24px;">Low Stock Follow-up</h3>
+          <table><thead><tr><th>Item</th><th>Stock</th></tr></thead><tbody>
+            {% for p in low_stock %}<tr><td>{{ p.display_name }}</td><td>{{ p.stock_level }}</td></tr>{% else %}<tr><td colspan="2" class="muted">No low stock.</td></tr>{% endfor %}
+          </tbody></table>
+          <div class="report-chart" style="margin-top:22px; padding-top:18px; border-top:1px solid #e2e8f0; border-bottom:0; margin-bottom:0; padding-bottom:0;">
+            <div class="donut-chart" style="--sales:{{ chart_sales_percent }};--returns:{{ chart_returns_percent }};--discount:{{ chart_discount_percent }};"></div>
+            <div class="chart-legend">
+              <div class="legend-item"><span class="legend-dot legend-sales"></span>Sales {{ chart_sales_percent }}%</div>
+              <div class="legend-item"><span class="legend-dot legend-returns"></span>Returns {{ chart_returns_percent }}%</div>
+              <div class="legend-item"><span class="legend-dot legend-discount"></span>Discount {{ chart_discount_percent }}%</div>
+            </div>
+          </div>
+        </div>
+        <div class="report-foot"><a href="{{ url_for('export_data', kind='low_stock') }}">Download Low Stock CSV</a></div>
+      </section>
+    </div>
+  </section>
+</div>
+{% endblock %}

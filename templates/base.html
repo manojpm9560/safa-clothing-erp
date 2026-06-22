@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ store.name }} - Retail Billing</title>
+  <style>
+    :root { --ink:#17202a; --muted:#667085; --line:#d7dde5; --panel:#fff; --page:#f5f7fa; --brand:#1f6feb; --dark:#111827; --bad:#b42318; --ok:#18794e; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial,sans-serif; color:var(--ink); background:#edf4fb; position:relative; }
+    body::before { content:""; position:fixed; inset:0; background:url("{{ url_for('static', filename='images/jonam-background-logo.png') }}") right 4vw bottom 5vh / min(40vw, 540px) no-repeat; opacity:.09; pointer-events:none; z-index:0; }
+    header { background:var(--dark); color:white; padding:14px 20px; display:flex; justify-content:space-between; gap:14px; align-items:center; flex-wrap:wrap; position:sticky; top:0; z-index:100; }
+    header h1 { margin:0; font-size:20px; }
+    .app-brand { display:flex; align-items:center; gap:12px; min-width:260px; }
+    .app-logo { width:82px; height:46px; object-fit:contain; border-radius:10px; background:white; padding:4px; }
+    .app-store-mark { display:grid; place-items:center; color:#0b4f91; font-size:24px; font-weight:900; }
+    .app-title { font-size:19px; font-weight:800; line-height:1.15; }
+    .app-subtitle { font-size:12px; color:#cbd5e1; font-weight:500; margin-top:2px; }
+    .header-actions { display:flex; align-items:center; gap:12px; margin-left:auto; }
+    .account-menu { position:relative; }
+    .account-menu summary { list-style:none; cursor:pointer; color:#e5e7eb; font-size:14px; background:rgba(255,255,255,.10); padding:10px 14px; border-radius:8px; font-weight:800; min-width:120px; text-align:center; }
+    .account-menu summary::-webkit-details-marker { display:none; }
+    .account-menu summary::after { content:" v"; font-size:12px; }
+    .account-panel { position:absolute; right:0; top:48px; width:250px; padding:12px; border-radius:10px; background:white; border:1px solid var(--line); box-shadow:0 18px 45px rgba(15,23,42,.24); z-index:20; color:var(--ink); }
+    .account-name { font-weight:900; font-size:16px; margin-bottom:4px; }
+    .account-time { color:var(--muted); font-size:13px; margin-bottom:10px; }
+    .account-panel a { display:block; color:var(--ink); text-decoration:none; padding:10px 10px; border-radius:8px; font-weight:700; }
+    .account-panel a:hover { background:#eef4ff; color:#0b4f91; }
+    main { max-width:1240px; margin:0 auto; padding:20px; position:relative; z-index:1; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:16px; }
+    .grid { display:grid; gap:16px; }
+    .grid-2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .grid-3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .grid-4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .row { display:flex; gap:10px; align-items:end; }
+    .row > * { flex:1; }
+    h2,h3 { margin-top:0; }
+    label { display:block; font-size:13px; color:var(--muted); margin-bottom:5px; }
+    input,select,button,textarea { width:100%; padding:10px; border:1px solid var(--line); border-radius:6px; font-size:14px; background:white; }
+    textarea { min-height:74px; }
+    button,.button { cursor:pointer; background:var(--brand); border:1px solid var(--brand); color:white; text-decoration:none; display:inline-block; text-align:center; padding:10px; border-radius:6px; }
+    .secondary { background:#374151; border-color:#374151; }
+    .danger { background:var(--bad); border-color:var(--bad); }
+    table { width:100%; border-collapse:collapse; background:white; }
+    th,td { padding:9px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-size:13px; }
+    .flash { padding:10px 12px; border-radius:6px; margin-bottom:12px; background:#e8f2ff; border:1px solid #b8d7ff; }
+    .flash.error { background:#fff1f0; border-color:#ffccc7; }
+    .metric { font-size:24px; font-weight:700; }
+    .muted { color:var(--muted); }
+    .thumb { width:58px; height:58px; object-fit:cover; border:1px solid var(--line); border-radius:6px; }
+    .drawer-toggle { width:40px; height:40px; padding:0; display:grid; place-items:center; border-radius:6px; background:rgba(255,255,255,.12); color:white; border:1px solid rgba(255,255,255,.22); font-size:25px; line-height:1; font-weight:800; }
+    .drawer-toggle:hover { background:rgba(255,255,255,.22); }
+    .drawer-overlay { position:fixed; inset:0; background:rgba(15,23,42,.28); opacity:0; visibility:hidden; transition:opacity .2s ease, visibility .2s ease; z-index:140; }
+    .drawer-overlay.open { opacity:1; visibility:visible; }
+    .slide-nav { position:fixed; top:0; left:0; width:min(270px,82vw); height:100vh; padding:88px 18px 22px; background:#fff; box-shadow:18px 0 45px rgba(15,23,42,.20); transform:translateX(-105%); transition:transform .24s ease; z-index:150; overflow:auto; }
+    .slide-nav.open { transform:translateX(0); }
+    .slide-nav-title { color:#0b4f91; font-size:19px; font-weight:900; padding:0 14px 16px; border-bottom:1px solid #d9e0ea; margin-bottom:12px; }
+    .slide-nav a { display:block; padding:14px; color:#23344d; text-decoration:none; border-left:3px solid transparent; font-weight:800; }
+    .slide-nav a:hover { color:#0b4f91; background:#eef5ff; border-left-color:#1688d3; }
+    @media (max-width:850px){ .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;} .row{flex-direction:column;align-items:stretch;} }
+    @media print { header, .no-print, .drawer-toggle, .slide-nav { display:none !important; } main { padding:0; max-width:none; } body { background:white; } .panel { border:0; } }
+  </style>
+</head>
+<body>
+  <header>
+    {% if current_user %}<button id="drawerToggle" class="drawer-toggle no-print" type="button" title="Open menu" aria-label="Open menu">&#8801;</button>{% endif %}
+    <div class="app-brand">
+      {% if store.logo %}<img class="app-logo" src="{{ url_for('static', filename=store.logo) }}" alt="{{ store.name }} logo">{% else %}<div class="app-logo app-store-mark">{{ store.name[0] }}</div>{% endif %}
+      <div>
+        <div class="app-title">{{ store.name }}</div>
+        <div class="app-subtitle">Retail Billing & Inventory</div>
+      </div>
+    </div>
+    {% if current_user %}
+    <div class="header-actions">
+      <details class="account-menu">
+        <summary>{{ current_user.username }}</summary>
+        <div class="account-panel">
+          <div class="account-name">{{ current_user.username }}</div>
+          <div class="account-time">Login time: {{ login_time or 'Current session' }}</div>
+          <a href="{{ url_for('profile') }}">Profile</a>
+          <a href="{{ url_for('change_password') }}">Change Password</a>
+          <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+      </details>
+    </div>
+    {% endif %}
+  </header>
+  {% if current_user %}
+  <div id="drawerOverlay" class="drawer-overlay no-print"></div>
+  <nav id="slideNav" class="slide-nav no-print">
+    <div class="slide-nav-title">{{ store.name }} Retail ERP</div>
+    <a href="{{ url_for('dashboard') }}">Home</a>
+    <a href="{{ url_for('pos') }}">POS</a>
+    <a href="{{ url_for('products') }}">Inventory</a>
+    <a href="{{ url_for('vendors') }}">B2B Vendors</a>
+    <a href="{{ url_for('customers') }}">Customers</a>
+    <a href="{{ url_for('cash_till') }}">Cash</a>
+    {% if current_user.role in ['owner', 'admin'] %}<a href="{{ url_for('gst_returns') }}">GST Returns</a>{% endif %}
+    <a href="{{ url_for('store_music') }}">Music</a>
+    <a href="{{ url_for('inventory_history') }}">Stock History</a>
+    <a href="{{ url_for('closing_report') }}">Closing</a>
+    {% if current_user.role in ['owner', 'admin'] %}<a href="{{ url_for('staff_accounts') }}">Staff</a>{% endif %}
+  </nav>
+  {% endif %}
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  {% if current_user %}
+  <script>
+    const drawerToggle = document.getElementById('drawerToggle');
+    const slideNav = document.getElementById('slideNav');
+    const drawerOverlay = document.getElementById('drawerOverlay');
+    function toggleSlideNav() {
+      slideNav.classList.toggle('open');
+      drawerOverlay.classList.toggle('open');
+    }
+    drawerToggle.addEventListener('click', toggleSlideNav);
+    drawerOverlay.addEventListener('click', toggleSlideNav);
+  </script>
+  {% endif %}
+</body>
+</html>
